@@ -1,0 +1,37 @@
+# Render blueprint — one web service, one persistent disk.
+#
+# ⚠️  numInstances must stay 1. A Render disk attaches to a single instance;
+#     scaling out would give each replica its own database.
+#
+#   Render dashboard → New → Blueprint → point at this repository.
+#   The disk and the Docker build are picked up from this file; set
+#   GLASSFISH_PUBLIC_URL to the service URL once Render assigns it.
+
+services:
+  - type: web
+    name: glassfish-zero
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: frankfurt
+    numInstances: 1
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: GLASSFISH_DB
+        value: /data/glassfish.db
+      - key: NODE_ENV
+        value: production
+      # Shown in the Settings tab's copy-paste snippet, so the value your
+      # users copy points at this deployment rather than at localhost.
+      - key: GLASSFISH_PUBLIC_URL
+        sync: false
+      # Registration closes itself after the first account. Set to 1 only to
+      # deliberately re-open it.
+      - key: GLASSFISH_ALLOW_SIGNUP
+        sync: false
+    disk:
+      name: glassfish-data
+      mountPath: /data
+      sizeGB: 1

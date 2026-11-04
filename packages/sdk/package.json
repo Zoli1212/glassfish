@@ -1,0 +1,38 @@
+{
+  "name": "glassfish-zero",
+  "version": "0.1.0",
+  "description": "Zero-dependency LLM observability SDK — tracing, token/cost accounting and model-swap analysis for Anthropic, OpenAI and any other provider.",
+  "license": "MIT",
+  "keywords": [
+    "llm",
+    "observability",
+    "tracing",
+    "monitoring",
+    "cost",
+    "tokens",
+    "anthropic",
+    "claude",
+    "openai"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

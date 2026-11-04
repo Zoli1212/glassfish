@@ -56,10 +56,35 @@ For development, `npm run dev` instead of `build` + `start`.
 |---|---|---|
 | `GLASSFISH_DB` | `apps/web/data/glassfish.db` | SQLite file path |
 | `GLASSFISH_PUBLIC_URL` | `http://localhost:3000` | Origin shown in the settings snippet |
+| `GLASSFISH_ALLOW_SIGNUP` | unset | `1` re-opens registration (see below) |
 | `PORT` | `3000` | Server port |
 
-Requires Node 22.5 or newer — the database runs on the built-in `node:sqlite`,
+Requires Node 23.4 or newer — the database runs on the built-in `node:sqlite`,
 so there is no native module to compile and no database server to operate.
+(Node 22.5–23.3 works too, but needs `--experimental-sqlite`.)
+
+**Registration closes itself.** Accounts can be created only while the
+instance has zero users. You register first and become the owner; the form
+then shuts, so a public URL cannot be claimed by a stranger. Set
+`GLASSFISH_ALLOW_SIGNUP=1` to deliberately re-open it.
+
+---
+
+## Deploying it
+
+One container, one volume — see **[DEPLOY.md](DEPLOY.md)** for Fly.io, Render
+and Railway, with configs in the repository ([`fly.toml`](fly.toml),
+[`render.yaml`](render.yaml), [`railway.json`](railway.json)).
+
+```bash
+docker build -t glassfish-zero .
+docker run -p 3000:3000 -v glassfish-data:/data glassfish-zero
+```
+
+**Run exactly one instance.** A volume attaches to a single machine, so a
+second replica would boot with its own empty database. Every shipped config
+pins the count to 1. Vercel and other serverless targets do not work for the
+same reason — no persistent disk.
 
 ---
 

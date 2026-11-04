@@ -1,0 +1,21 @@
+{
+  "name": "glassfish-zero-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Glassfish Zero — self-hosted LLM observability: tracing, monitoring, cost accounting and model-swap simulation.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@glassfish-zero/web",
+    "build": "npm run build --workspace=glassfish-zero && npm run build --workspace=@glassfish-zero/web",
+    "build:sdk": "npm run build --workspace=glassfish-zero",
+    "start": "npm run start --workspace=@glassfish-zero/web",
+    "seed": "npm run seed --workspace=@glassfish-zero/web",
+    "typecheck": "npm run typecheck --workspace=glassfish-zero && npm run typecheck --workspace=@glassfish-zero/web"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
