@@ -21,9 +21,11 @@ WORKDIR /repo
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-COPY --from=deps /repo/node_modules ./node_modules
-COPY --from=deps /repo/packages/sdk/node_modules ./packages/sdk/node_modules
-COPY --from=deps /repo/apps/web/node_modules ./apps/web/node_modules
+# The whole installed tree, not a list of per-workspace node_modules: npm
+# hoists what it can to the root and leaves a nested install only where
+# versions conflict, so which directories exist is not something a Dockerfile
+# should hard-code. `apps/web/node_modules` does not exist at all today.
+COPY --from=deps /repo ./
 COPY . .
 
 # The SDK is compiled too, so the image can serve its tarball and the types
