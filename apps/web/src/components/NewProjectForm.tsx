@@ -5,9 +5,13 @@ import { useActionState } from 'react';
 import { createProjectAction } from '@/app/actions';
 import { EMPTY_ACTION_STATE } from '@/lib/action-state';
 import { CopyField } from './CopyField';
+import { resilient } from './resilient-action';
 
 export function NewProjectForm() {
-  const [state, formAction, pending] = useActionState(createProjectAction, EMPTY_ACTION_STATE);
+  const [state, formAction, pending] = useActionState(
+    resilient(createProjectAction),
+    EMPTY_ACTION_STATE,
+  );
 
   if (state.secret && state.slug) {
     return (

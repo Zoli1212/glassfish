@@ -3,10 +3,11 @@
 import { useActionState } from 'react';
 import { loginAction, registerAction } from '@/app/actions';
 import { EMPTY_ACTION_STATE } from '@/lib/action-state';
+import { resilient } from './resilient-action';
 
 export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   const action = mode === 'login' ? loginAction : registerAction;
-  const [state, formAction, pending] = useActionState(action, EMPTY_ACTION_STATE);
+  const [state, formAction, pending] = useActionState(resilient(action), EMPTY_ACTION_STATE);
 
   return (
     <form action={formAction} className="flex flex-col gap-3.5">
