@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "description": "Zero-dependency LLM observability SDK — tracing, token/cost accounting and model-swap analysis for Anthropic, OpenAI and any other provider.",
   "license": "MIT",
+  "author": "Zoli1212",
+  "homepage": "https://github.com/Zoli1212/glassfish#readme",
+  "bugs": {
+    "url": "https://github.com/Zoli1212/glassfish/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zoli1212/glassfish.git",
+    "directory": "packages/sdk"
+  },
   "keywords": [
     "llm",
     "observability",
@@ -18,7 +28,8 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
