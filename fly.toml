@@ -44,6 +44,10 @@ primary_region = "fra"
     path = "/api/v1/health"
 
 [[vm]]
+  # 256mb (the shared-cpu-1x default) is not enough for the Next.js server;
+  # swap is a backstop so a traffic spike degrades instead of OOM-killing the
+  # machine and dropping the spans in flight.
   size = "shared-cpu-1x"
   memory = "512mb"
-  cpus = 1
+
+swap_size_mb = 512
