@@ -20,6 +20,9 @@ primary_region = "fra"
 [env]
   PORT = "3000"
   GLASSFISH_DB = "/data/glassfish.db"
+  # Shown in the Settings tab's copy-paste snippet. Without it users copy a
+  # localhost URL into their application and wonder why nothing arrives.
+  GLASSFISH_PUBLIC_URL = "https://glassfish-zero.fly.dev"
 
 [[mounts]]
   source = "glassfish_data"
