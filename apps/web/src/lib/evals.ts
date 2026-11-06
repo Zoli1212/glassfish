@@ -447,6 +447,23 @@ export function addResults(
 /** Derived from the results, so a retried batch cannot double a total. */
 export function rollUpExperiment(experimentId: string, finish = false): void {
   const db = getDb();
+
+  if (finish) {
+    // Spans flush asynchronously, so a result's trace usually lands *after*
+    // the result row does. Cost is therefore copied from the trace at close
+    // time rather than reported by the runner — one source of truth, and it
+    // stays correct if the price table is corrected and history re-priced.
+    db.prepare(
+      `UPDATE experiment_results
+          SET cost_usd      = t.cost_usd,
+              input_tokens  = t.input_tokens,
+              output_tokens = t.output_tokens
+         FROM traces t
+        WHERE experiment_results.trace_id = t.id
+          AND experiment_results.experiment_id = ?`,
+    ).run(experimentId);
+  }
+
   const agg = db
     .prepare<
       [string],

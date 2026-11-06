@@ -16,6 +16,8 @@ import {
 } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { guessFamily, guessProvider } from '@/lib/catalogue';
+import { addScore, deleteScore } from '@/lib/evals';
+import { applyRetention, previewRetention } from '@/lib/retention';
 import type { ActionState } from '@/lib/action-state';
 
 // -------------------------------------------------------------------- auth
@@ -181,6 +183,107 @@ export async function revokeApiKeyAction(formData: FormData): Promise<void> {
     .run(Date.now(), keyId, project.id);
 
   revalidatePath(`/p/${slug}/settings`);
+}
+
+// ---------------------------------------------------------------- feedback
+
+/**
+ * Record a human judgement on a trace.
+ *
+ * Lands in the same `scores` table as eval scores, so "was this good?" is one
+ * question whether a person answered it or a scorer did.
+ */
+export async function addFeedbackAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const slug = String(formData.get('slug') ?? '');
+  const { project } = await requireProject(slug);
+
+  const traceId = String(formData.get('traceId') ?? '').trim();
+  const name = String(formData.get('name') ?? '').trim() || 'quality';
+  const rawValue = String(formData.get('value') ?? '').trim();
+  const comment = String(formData.get('comment') ?? '').trim();
+
+  if (!traceId) return { error: 'Missing trace.' };
+  if (rawValue === '' && comment === '') {
+    return { error: 'Give a rating, a comment, or both.' };
+  }
+
+  const value = rawValue === '' ? null : Number(rawValue);
+  if (value !== null && (!Number.isFinite(value) || value < 0 || value > 1)) {
+    return { error: 'Rating must be between 0 and 1.' };
+  }
+
+  // A score on a trace from another project would quietly skew its averages.
+  const trace = getDb()
+    .prepare<[string, string], { id: string }>(
+      'SELECT id FROM traces WHERE project_id = ? AND id = ?',
+    )
+    .get(project.id, traceId);
+  if (!trace) return { error: 'That trace does not belong to this project.' };
+
+  addScore(project.id, {
+    traceId,
+    name,
+    value,
+    comment: comment || null,
+    source: 'human',
+  });
+
+  revalidatePath(`/p/${slug}/traces/${traceId}`);
+  return { message: 'Feedback recorded.' };
+}
+
+export async function deleteFeedbackAction(formData: FormData): Promise<void> {
+  const slug = String(formData.get('slug') ?? '');
+  const traceId = String(formData.get('traceId') ?? '');
+  const scoreId = String(formData.get('scoreId') ?? '');
+  const { project } = await requireProject(slug);
+
+  deleteScore(project.id, scoreId);
+  revalidatePath(`/p/${slug}/traces/${traceId}`);
+}
+
+// --------------------------------------------------------------- retention
+
+/**
+ * Delete spans older than the chosen horizon.
+ *
+ * Requires typing the number of days back as confirmation: this destroys cost
+ * history, and an accidental click should not be able to do it.
+ */
+export async function applyRetentionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const slug = String(formData.get('slug') ?? '');
+  const { project } = await requireProject(slug);
+
+  const days = Number(String(formData.get('days') ?? '').trim());
+  const confirm = String(formData.get('confirm') ?? '').trim();
+
+  if (!Number.isFinite(days) || days < 1) return { error: 'Enter a horizon of at least 1 day.' };
+  if (confirm !== String(days)) {
+    return { error: `Type ${days} in the confirmation box to delete data older than ${days} days.` };
+  }
+
+  const preview = previewRetention(project.id, days);
+  if (preview.spans === 0) {
+    return { message: `Nothing older than ${days} days — no spans deleted.` };
+  }
+
+  const result = applyRetention(project.id, days);
+
+  revalidatePath(`/p/${slug}`);
+  revalidatePath(`/p/${slug}/settings`);
+  return {
+    message: `Deleted ${result.deletedSpans.toLocaleString('en-US')} span(s) across ${result.deletedTraces.toLocaleString('en-US')} trace(s).${
+      result.keptForExperiments > 0
+        ? ` ${result.keptForExperiments} trace(s) were kept because an experiment result points at them.`
+        : ''
+    }`,
+  };
 }
 
 // ------------------------------------------------------------ model prices

@@ -1,7 +1,7 @@
 {
   "name": "glassfish-zero",
-  "version": "0.1.0",
-  "description": "Zero-dependency LLM observability SDK — tracing, token/cost accounting and model-swap analysis for Anthropic, OpenAI and any other provider.",
+  "version": "0.2.0",
+  "description": "Zero-dependency LLM observability SDK — tracing, token/cost accounting, model-swap analysis and offline evaluation for Anthropic, OpenAI and any other provider.",
   "license": "MIT",
   "author": "Zoli1212",
   "homepage": "https://github.com/Zoli1212/glassfish#readme",

@@ -3,8 +3,10 @@ import { notFound } from 'next/navigation';
 import { requireProject } from '@/lib/auth';
 import { getTrace, getTraceSpans } from '@/lib/queries';
 import { formatTokens, formatUsd } from '@/lib/pricing';
-import { Badge, Notice, PageHeader, StatTile } from '@/components/ui';
+import { Badge, Card, Notice, PageHeader, StatTile } from '@/components/ui';
 import { TraceExplorer, type SpanDetail } from '@/components/TraceExplorer';
+import { FeedbackPanel } from '@/components/FeedbackPanel';
+import { traceScores } from '@/lib/evals';
 import { formatDuration, formatTime } from '@/components/chart-utils';
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +32,7 @@ export default async function TraceDetailPage({
   const trace = getTrace(project.id, decoded);
   if (!trace) notFound();
 
+  const scores = traceScores(project.id, decoded);
   const rows = getTraceSpans(project.id, decoded);
   const spans: SpanDetail[] = rows.map((row) => ({
     id: row.id,
@@ -129,6 +132,14 @@ export default async function TraceDetailPage({
         traceStart={trace.started_at}
         traceDuration={Math.max(1, trace.duration_ms)}
       />
+
+      <Card
+        title="Was this good?"
+        description="Human and automated judgements share one table, so quality and cost can be read side by side."
+        className="mt-5"
+      >
+        <FeedbackPanel slug={slug} traceId={trace.id} scores={scores} />
+      </Card>
     </>
   );
 }

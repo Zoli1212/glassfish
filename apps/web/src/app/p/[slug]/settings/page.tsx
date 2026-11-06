@@ -1,9 +1,10 @@
 import { requireProject } from '@/lib/auth';
 import { getDb } from '@/lib/db';
-import { Badge, Card, Notice, PageHeader } from '@/components/ui';
-import { BudgetForm, CreateKeyForm } from '@/components/SettingsForms';
+import { Badge, Card, Notice, PageHeader, StatTile } from '@/components/ui';
+import { BudgetForm, CreateKeyForm, RetentionForm } from '@/components/SettingsForms';
 import { CopyBlock } from '@/components/CopyField';
 import { deleteProjectAction, revokeApiKeyAction } from '@/app/actions';
+import { storageUsage } from '@/lib/retention';
 import { formatRelative, formatTime } from '@/components/chart-utils';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +36,7 @@ export default async function SettingsPage({
     .all(project.id);
 
   const activeKeys = keys.filter((k) => k.revoked_at === null);
+  const usage = storageUsage(project.id);
 
   const envSnippet = `GLASSFISH_API_KEY=gfz_live_…
 GLASSFISH_BASE_URL=${process.env.GLASSFISH_PUBLIC_URL ?? 'http://localhost:3000'}`;
@@ -124,6 +126,36 @@ GLASSFISH_BASE_URL=${process.env.GLASSFISH_PUBLIC_URL ?? 'http://localhost:3000'
         className="mb-5"
       >
         <BudgetForm slug={slug} current={project.monthlyBudgetUsd} />
+      </Card>
+
+      <Card
+        title="Storage and retention"
+        description="Nothing is deleted automatically — losing cost history silently would be worse than a full disk."
+        className="mb-5"
+      >
+        <div className="mb-4 grid gap-3 sm:grid-cols-4">
+          <StatTile label="Spans" value={usage.spans.toLocaleString('en-US')} />
+          <StatTile label="Traces" value={usage.traces.toLocaleString('en-US')} />
+          <StatTile
+            label="Experiment results"
+            value={usage.experimentResults.toLocaleString('en-US')}
+            sub="never pruned"
+          />
+          <StatTile
+            label="Approx. size"
+            value={`${(usage.estimatedBytes / 1024 / 1024).toFixed(1)} MB`}
+            sub={
+              usage.oldestSpanAt
+                ? `oldest ${formatRelative(usage.oldestSpanAt)}`
+                : 'no spans yet'
+            }
+          />
+        </div>
+        <RetentionForm slug={slug} />
+        <p className="m-0 mt-3 text-xs text-ink-muted">
+          Traces referenced by an experiment result are kept regardless of age, so a comparison
+          never loses the outputs it was measuring.
+        </p>
       </Card>
 
       <Card title="Delete this project">

@@ -9,6 +9,8 @@ import type {
   TraceOptions,
 } from './types';
 import { describeError, newId, now, truncate } from './utils';
+import { runExperiment } from './experiment';
+import type { DatasetExample, ExperimentOptions, ExperimentSummary } from './eval-types';
 
 const DEFAULTS = {
   baseUrl: 'http://localhost:3000',
@@ -104,9 +106,12 @@ export class Glassfish {
   private inFlight: Promise<unknown> | null = null;
   private droppedSpans = 0;
   private closed = false;
+  private readonly apiKey: string;
+  private readonly fetchImpl: typeof fetch | undefined;
 
   constructor(opts: GlassfishOptions = {}) {
     const apiKey = opts.apiKey ?? process.env.GLASSFISH_API_KEY ?? '';
+    this.apiKey = apiKey;
     const baseUrl = opts.baseUrl ?? process.env.GLASSFISH_BASE_URL ?? DEFAULTS.baseUrl;
     const disabled = opts.disabled ?? process.env.GLASSFISH_DISABLED === '1';
 
@@ -134,6 +139,7 @@ export class Glassfish {
       });
 
     const fetchImpl = opts.fetch ?? globalThis.fetch;
+    this.fetchImpl = typeof fetchImpl === 'function' ? fetchImpl.bind(globalThis) : undefined;
 
     if (this.options.disabled) {
       this.transport = null;
@@ -283,6 +289,112 @@ export class Glassfish {
       shouldCapturePayloads: () => this.options.capturePayloads,
       truncatePayload: (value) => truncate(value, this.options.payloadMaxChars),
     };
+  }
+
+  // ------------------------------------------------- evaluation & feedback
+
+  /**
+   * Authenticated JSON call against the dashboard API.
+   *
+   * Unlike span ingest, these calls **do** throw: an experiment that silently
+   * failed to record its results is worse than one that stops and says so.
+   */
+  async request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+    if (!this.apiKey) throw new Error('no API key configured (set GLASSFISH_API_KEY)');
+    if (!this.fetchImpl) throw new Error('global fetch is unavailable (Node 18+ required)');
+
+    const url = `${this.options.baseUrl.replace(/\/+$/, '')}${path}`;
+    const response = await this.fetchImpl(url, {
+      method,
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${this.apiKey}`,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      let detail = '';
+      try {
+        detail = (await response.text()).slice(0, 400);
+      } catch {
+        detail = '<unreadable body>';
+      }
+      throw new Error(`${method} ${path} failed with ${response.status}: ${detail}`);
+    }
+
+    return (await response.json()) as T;
+  }
+
+  readonly datasets = {
+    /** Create or update a dataset and its examples. */
+    push: async (
+      name: string,
+      examples: DatasetExample[],
+      options: { description?: string } = {},
+    ): Promise<{ id: string; written: number }> => {
+      const result = await this.request<{ dataset: { id: string }; written: number }>(
+        'POST',
+        '/api/v1/datasets',
+        { name, description: options.description, examples },
+      );
+      return { id: result.dataset.id, written: result.written };
+    },
+
+    /** Fetch a dataset's examples. */
+    pull: async (
+      name: string,
+      options: { split?: string; limit?: number } = {},
+    ): Promise<DatasetExample[]> => {
+      const query = new URLSearchParams();
+      if (options.split) query.set('split', options.split);
+      if (options.limit) query.set('limit', String(options.limit));
+      const suffix = query.toString() ? `?${query}` : '';
+      const result = await this.request<{ examples: DatasetExample[] }>(
+        'GET',
+        `/api/v1/datasets/${encodeURIComponent(name)}${suffix}`,
+      );
+      return result.examples;
+    },
+
+    list: async (): Promise<{ id: string; name: string; exampleCount: number }[]> => {
+      const result = await this.request<{
+        datasets: { id: string; name: string; exampleCount: number }[];
+      }>('GET', '/api/v1/datasets');
+      return result.datasets;
+    },
+  };
+
+  /** Run a dataset through a task, score every result, and record the run. */
+  experiment<T>(options: ExperimentOptions<T>): Promise<ExperimentSummary> {
+    return runExperiment<T>(
+      {
+        request: (method, path, body) => this.request(method, path, body),
+        trace: (name, fn) => this.trace(name, (handle) => fn({ id: handle.id })),
+        flush: () => this.flush(),
+        baseUrl: this.options.baseUrl,
+      },
+      options,
+    );
+  }
+
+  /**
+   * Attach a judgement to a trace — a thumbs-up, a human rating, an automated
+   * check. Lands in the same table as eval scores, so "was it good?" is one
+   * question whether the answer came from a person or a scorer.
+   */
+  async feedback(payload: {
+    traceId: string;
+    name: string;
+    value?: number;
+    label?: string;
+    comment?: string;
+    source?: 'human' | 'judge' | 'code';
+  }): Promise<void> {
+    await this.request('POST', '/api/v1/scores', {
+      ...payload,
+      source: payload.source ?? 'code',
+    });
   }
 
   // ------------------------------------------------------------- lifecycle

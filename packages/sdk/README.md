@@ -117,6 +117,96 @@ gf.record({
 `capturePayloads` sends truncated prompt and completion text to your
 collector. It is off by default — turn it on deliberately.
 
+## Evaluation
+
+Tracing answers *what did it cost*. Evaluation answers *was it any good* —
+and the two live in the same place, so you can read quality and spend side by
+side instead of in two tools.
+
+### Datasets
+
+```ts
+await gf.datasets.push('support-questions', [
+  {
+    externalId: 'q-1',                        // stable key
+    input: { question: 'How do I cancel?' },
+    expected: 'Settings → Billing → Cancel',
+  },
+]);
+```
+
+Give every example an `externalId`. Re-running the push then updates rows in
+place instead of appending a second copy of the whole set — the failure that
+silently doubles the cost of every later run, and breaks run-to-run pairing.
+
+### Experiments
+
+```ts
+import { scorers } from 'glassfish-zero';
+
+const summary = await gf.experiment({
+  name: 'opus-5 candidate',
+  dataset: 'support-questions',
+  targetModel: 'claude-opus-5',
+  concurrency: 4,
+  task: async (example) => {
+    const message = await anthropic.messages.create({
+      model: 'claude-opus-5',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: example.input.question }],
+    });
+    return message.content[0].text;
+  },
+  scorers: [
+    scorers.contains(),
+    scorers.similarity(),
+    scorers.maxLatency(8_000),
+    scorers.llmJudge({
+      client: anthropic,
+      model: 'claude-opus-5',
+      criteria: 'Does the answer resolve the question without inventing detail?',
+    }),
+  ],
+});
+```
+
+Each example runs inside its own trace, so every result links to the spans it
+produced and cost is read back from them — the runner never has to account
+for it. One example failing does not stop the run: the failure is recorded
+with its message and the rest still execute.
+
+**The runner executes in your process.** The judge calls your provider with
+your credentials; the dashboard never holds a provider key. A self-hosted
+observability tool that accumulates everyone's API keys is a worse liability
+than the problem it solves.
+
+### Built-in scorers
+
+| Scorer | Returns |
+|---|---|
+| `exactMatch()` | 1 when output equals expected, whitespace-normalised |
+| `contains()` | 1 when output contains expected |
+| `regexMatch(re)` | 1 when the pattern matches |
+| `jsonValid()` | 1 when the output parses as JSON |
+| `similarity()` | normalised Levenshtein, 0..1 |
+| `maxLatency(ms)` | 1 when the call finished inside the budget |
+| `llmJudge({…})` | a model's 0..1 judgement, with its reason |
+| `custom(name, fn)` | whatever you write |
+
+A scorer may return `null` for "could not judge" — which is **not** a zero.
+Averaging a failed judgement as zero silently drags a model's score down, so
+unscored examples are excluded from the mean and shown as a dash.
+
+### Feedback
+
+```ts
+await gf.feedback({ traceId, name: 'quality', value: 0, comment: 'invented a refund policy' });
+```
+
+Human ratings and automated scores land in the same table, so "was it good?"
+is one question whether a person answered it or a scorer did. The trace page
+has a form for the human half.
+
 ## Operational guarantees
 
 - **Never throws into your code.** Transport failures go to `onError`; a

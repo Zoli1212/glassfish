@@ -13,6 +13,16 @@ export type {
 export { normaliseUsage } from './usage';
 export { SDK_NAME, SDK_VERSION } from './transport';
 
+export * as scorers from './scorers';
+export type {
+  DatasetExample,
+  ExperimentOptions,
+  ExperimentSummary,
+  Scorer,
+  ScoreOutput,
+  TaskContext,
+} from './eval-types';
+
 import { Glassfish, type TraceHandle as TraceHandleType } from './client';
 import type { GlassfishOptions } from './types';
 

@@ -8,6 +8,8 @@ const ITEMS = [
   { href: '/traces', label: 'Traces' },
   { href: '/models', label: 'Models' },
   { href: '/swap', label: 'Model swap' },
+  { href: '/datasets', label: 'Datasets' },
+  { href: '/experiments', label: 'Experiments' },
   { href: '/prices', label: 'Prices' },
   { href: '/settings', label: 'Settings' },
 ];
