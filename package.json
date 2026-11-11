@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "description": "Glassfish Zero — self-hosted LLM observability: tracing, monitoring, cost accounting and model-swap simulation.",
   "workspaces": [
-    "packages/*",
-    "apps/*"
+    "packages/sdk",
+    "apps/web"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=@glassfish-zero/web",
@@ -13,7 +13,9 @@
     "build:sdk": "npm run build --workspace=glassfish-zero",
     "start": "npm run start --workspace=@glassfish-zero/web",
     "seed": "npm run seed --workspace=@glassfish-zero/web",
-    "typecheck": "npm run typecheck --workspace=glassfish-zero && npm run typecheck --workspace=@glassfish-zero/web"
+    "typecheck": "npm run typecheck --workspace=glassfish-zero && npm run typecheck --workspace=@glassfish-zero/web",
+    "desktop:install": "npm --prefix apps/desktop install",
+    "desktop:dist": "npm --prefix apps/desktop run dist"
   },
   "engines": {
     "node": ">=20"

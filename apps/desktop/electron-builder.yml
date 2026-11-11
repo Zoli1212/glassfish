@@ -1,0 +1,52 @@
+appId: dev.glassfish.zero
+productName: Glassfish Zero
+copyright: Copyright © 2026 Zoli1212
+
+# Stated explicitly: npm workspaces hoist electron to the repository root,
+# where electron-builder does not look, so it cannot infer the version from
+# the package's own node_modules. Pinning here also keeps the shipped runtime
+# identical between builds.
+electronVersion: 45.2.3
+
+directories:
+  output: dist
+  buildResources: build
+
+# Only the Electron shell lives in the asar; the dashboard bundle ships
+# alongside it, because Next resolves its own files from disk at runtime and
+# cannot read them out of an archive.
+files:
+  - src/**/*
+  - package.json
+  - '!server/**/*'
+
+extraResources:
+  - from: server
+    to: server
+    filter:
+      - '**/*'
+
+asar: true
+compression: maximum
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: GlassfishZero-Setup-${version}.${ext}
+  # Unsigned: Windows SmartScreen will warn on first run until the installer
+  # builds reputation or gets an Authenticode certificate.
+  signAndEditExecutable: true
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Glassfish Zero
+  # The database lives in %APPDATA%, never in the install directory, so an
+  # uninstall must not be able to take a user's history with it.
+  deleteAppDataOnUninstall: false
+  include: build/installer.nsh
