@@ -10,6 +10,7 @@ const ITEMS = [
   { href: '/swap', label: 'Model swap' },
   { href: '/datasets', label: 'Datasets' },
   { href: '/experiments', label: 'Experiments' },
+  { href: '/prompts', label: 'Prompts' },
   { href: '/prices', label: 'Prices' },
   { href: '/settings', label: 'Settings' },
 ];

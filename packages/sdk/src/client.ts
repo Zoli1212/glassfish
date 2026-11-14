@@ -10,6 +10,7 @@ import type {
 } from './types';
 import { describeError, newId, now, truncate } from './utils';
 import { runExperiment } from './experiment';
+import { makePromptsApi } from './prompts';
 import type { DatasetExample, ExperimentOptions, ExperimentSummary } from './eval-types';
 
 const DEFAULTS = {
@@ -364,6 +365,18 @@ export class Glassfish {
       return result.datasets;
     },
   };
+
+  /**
+   * Prompt registry.
+   *
+   * A prompt that lives only in a source file is invisible to the thing
+   * measuring it — an experiment's score moves and nobody can say which
+   * wording produced it. Pin a version and the text your code sends cannot
+   * change underneath a recorded result.
+   */
+  readonly prompts = makePromptsApi({
+    request: (method, path, body) => this.request(method, path, body),
+  });
 
   /** Run a dataset through a task, score every result, and record the run. */
   experiment<T>(options: ExperimentOptions<T>): Promise<ExperimentSummary> {

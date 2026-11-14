@@ -197,6 +197,38 @@ A scorer may return `null` for "could not judge" — which is **not** a zero.
 Averaging a failed judgement as zero silently drags a model's score down, so
 unscored examples are excluded from the mean and shown as a dash.
 
+### Prompts
+
+A prompt that lives only in a source file is invisible to the thing measuring
+it: an experiment's score moves and nobody can say which wording produced it.
+
+```ts
+await gf.prompts.publish('support-reply', {
+  template: 'Answer using only the context.\n\nQuestion: {{question}}',
+  systemTemplate: 'You are terse and never invent policy.',
+  model: 'claude-opus-5',
+  commitMessage: 'tighten the no-invention instruction',
+});
+
+const prompt = await gf.prompts.get('support-reply', 3);  // pin a version
+
+await anthropic.messages.create({
+  model: prompt.model,
+  max_tokens: 1024,
+  system: prompt.renderSystem(),
+  messages: [{ role: 'user', content: prompt.render({ question }) }],
+});
+```
+
+Publishing identical text is a no-op, so a deploy script that pushes on every
+boot will not fill the history with duplicates. Versions are immutable and
+append-only, and the dashboard shows a line diff between any two.
+
+A `{{placeholder}}` with no matching variable is **left in place**, not
+replaced with an empty string. An unresolved `{{customer}}` reaching the model
+is obvious in the output; a silently emptied one produces a plausible-looking
+answer about nobody.
+
 ### Feedback
 
 ```ts

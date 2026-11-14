@@ -9,6 +9,11 @@ Two pieces:
 |---|---|
 | [`packages/sdk`](packages/sdk) → npm `glassfish-zero` | Zero-dependency SDK. Wrap your Anthropic or OpenAI client, get spans. |
 | [`apps/web`](apps/web) | Next.js dashboard + ingest API. SQLite-backed, no native modules. |
+| [`apps/desktop`](apps/desktop) | Electron build of the same dashboard — one `.exe`, no Docker, no server to run. |
+
+Two halves to the product: **tracing** answers what it cost, **evaluation**
+answers whether it was any good, and they live in the same place so quality
+and spend are read side by side.
 
 ---
 

@@ -14,6 +14,8 @@ export { normaliseUsage } from './usage';
 export { SDK_NAME, SDK_VERSION } from './transport';
 
 export * as scorers from './scorers';
+export { renderTemplate } from './prompts';
+export type { ResolvedPrompt } from './prompts';
 export type {
   DatasetExample,
   ExperimentOptions,
